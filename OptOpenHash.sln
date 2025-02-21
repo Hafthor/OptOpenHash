@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OptOpenHash", "OptOpenHash\OptOpenHash.csproj", "{1139EB1F-EFF7-4EF9-BAEC-607DE99A2BE2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BenchmarkOptOpenHash", "BenchmarkOptOpenHash\BenchmarkOptOpenHash.csproj", "{C1944EE5-1D31-400E-B595-915F81710ECE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestOptOpenHash", "TestOptOpenHash\TestOptOpenHash.csproj", "{2C1837B8-CF02-4FCD-84A9-81F1DBCC749D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1139EB1F-EFF7-4EF9-BAEC-607DE99A2BE2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1139EB1F-EFF7-4EF9-BAEC-607DE99A2BE2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1139EB1F-EFF7-4EF9-BAEC-607DE99A2BE2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1139EB1F-EFF7-4EF9-BAEC-607DE99A2BE2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C1944EE5-1D31-400E-B595-915F81710ECE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C1944EE5-1D31-400E-B595-915F81710ECE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C1944EE5-1D31-400E-B595-915F81710ECE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C1944EE5-1D31-400E-B595-915F81710ECE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2C1837B8-CF02-4FCD-84A9-81F1DBCC749D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2C1837B8-CF02-4FCD-84A9-81F1DBCC749D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2C1837B8-CF02-4FCD-84A9-81F1DBCC749D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2C1837B8-CF02-4FCD-84A9-81F1DBCC749D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
