@@ -32,7 +32,7 @@ public class FunnelHashTable<TKey, TValue> {
         levels[^1] = new (TKey, TValue)?[specialSize];
     }
     
-    public bool Insert(TKey key, TValue value) {
+    public bool Add(TKey key, TValue value) {
         Contract.Assert(numInserts < maxInserts, "Hash table is full");
         uint hash = (uint)key.GetHashCode();
         for (int i = 0; i < buckets.Length; i++) {
@@ -84,9 +84,9 @@ public class FunnelHashTable<TKey, TValue> {
         return entry;
     }
 
-    public TValue Search(TKey key) {
+    public TValue GetValueOrDefault(TKey key, TValue defaultValue = default) {
         var entry = FindEntry(key);
-        return entry.HasValue ? entry.Value.value : default;
+        return entry.HasValue ? entry.Value.value : defaultValue;
     }
 
     public bool Contains(TKey key) => FindEntry(key).HasValue;

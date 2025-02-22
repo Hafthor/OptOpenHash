@@ -9,13 +9,17 @@ public class ElasticHashTableTests {
         var table = new ElasticHashTable<string, string>();
         int nInsert = 2000;
         for (int i = 0; i < nInsert; i++) {
-            table.Insert($"key{i}", $"value{i}");
+            Assert.IsTrue(table.Add($"key{i}", $"value{i}"));
         }
         for (int i = 0; i < nInsert; i++) {
-            string? value = table.Search($"key{i}");
+            string? value = table.GetValueOrDefault($"key{i}");
             Assert.IsNotNull(value, $"Value for key{i} should not be null");
             Assert.AreEqual($"value{i}", value!);
         }
-        Assert.IsNull(table.Search("nonexistent"));
+        
+        Assert.IsNull(table.GetValueOrDefault("nonexistent"));
+        
+        Assert.AreEqual(false, table.AddOrUpdate("key99", "new value99"));
+        Assert.AreEqual("new value99", table.GetValueOrDefault("key99"));
     }
 }
