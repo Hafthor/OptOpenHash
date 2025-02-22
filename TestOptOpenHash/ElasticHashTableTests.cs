@@ -6,9 +6,8 @@ namespace TestOptOpenHash;
 public class ElasticHashTableTests {
     [TestMethod]
     public void Test() {
-        int capacity = 1000;
-        var table = new ElasticHashTable<string, string>(capacity);
-        int nInsert = table.Remaining;
+        var table = new ElasticHashTable<string, string>();
+        int nInsert = 2000;
         for (int i = 0; i < nInsert; i++) {
             table.Insert($"key{i}", $"value{i}");
         }

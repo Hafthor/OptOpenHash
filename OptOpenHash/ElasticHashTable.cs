@@ -6,40 +6,24 @@ public class ElasticHashTable<TKey, TValue> {
     private const int C = 4;
     private const double Threshold = 1.0 / C, Delta = 0.1, HalfDelta = Delta / 2;
     private static double Log2Delta = -Math.Log2(Delta);
-    private readonly int maxInserts;
-    private int numInserts;
-    private readonly (TKey key, TValue value)?[][] levels;
-    private readonly int[] occupancies;
+    private int numInserts, capacity, maxInserts;
+    private readonly List<(TKey key, TValue value)?[]> levels = new();
+    private readonly List<int> occupancies = new();
 
-    public ElasticHashTable(int capacity) {
-        Contract.Assert(capacity > 0, "Capacity must be positive");
-
+    public ElasticHashTable() {
+        capacity = 0;
+        for (int i = 0, size = 1; i < 10; i++, size <<= 1) {
+            levels.Add(new (TKey, TValue)?[size]);
+            occupancies.Add(0);
+            capacity += size;
+        }
         maxInserts = capacity - (int)(Delta * capacity);
         numInserts = 0;
-
-        int numLevels = Math.Max(1, Log2Floor(capacity)), remaining = capacity;
-        levels = new (TKey, TValue)?[numLevels][];
-        occupancies = new int[numLevels];
-        for (int i = 0; i < numLevels - 1; i++) {
-            int size = Math.Max(1, remaining / (1 << (numLevels - i)));
-            levels[i] = new (TKey, TValue)?[size];
-            remaining -= size;
-        }
-        levels[^1] = new (TKey key, TValue value)?[remaining];
-    }
-    
-    private static int Log2Floor(int value) {
-        int log = 30;
-        for (int b = 1 << 30; b > 0; b >>= 1, log--)
-            if (value >= b)
-                return log;
-        throw new ArgumentOutOfRangeException(nameof(value), "value must be positive non-zero");
     }
 
     public bool Insert(TKey key, TValue value) {
         uint hash = (uint)key.GetHashCode();
-        Contract.Assert(numInserts < maxInserts, "Hash table is full");
-        for (int i = 0; i < levels.Length - 1; i++) {
+        for (int i = 0; i < levels.Count - 1; i++) {
             var level = levels[i];
             double load = (double)(level.Length - occupancies[i]) / level.Length;
             if (load > HalfDelta) {
@@ -54,8 +38,14 @@ public class ElasticHashTable<TKey, TValue> {
                 }
             }
         }
-        if (InsertAt(levels[^1].Length, levels.Length - 1, levels[^1])) return true;
-        Contract.Assert(false, "Hash table is full");
+        if (InsertAt(levels[^1].Length, levels.Count - 1, levels[^1])) return true;
+        // Expand
+        int nextSize = levels[^1].Length << 1;
+        levels.Add(new (TKey key, TValue value)?[nextSize]);
+        occupancies.Add(0);
+        capacity += nextSize;
+        maxInserts = capacity - (int)(Delta * capacity);
+        if (InsertAt(nextSize, levels.Count - 1, levels[^1])) return true;
         return false;
 
         bool InsertAt(int probeLimit, int i, (TKey key, TValue value)?[] level) {
@@ -81,7 +71,7 @@ public class ElasticHashTable<TKey, TValue> {
 
     private (TKey key, TValue value)? FindEntry(TKey key) {
         uint hash = (uint)key.GetHashCode();
-        for (int i = 0; i < levels.Length; i++) {
+        for (int i = 0; i < levels.Count; i++) {
             var level = levels[i];
             int size = level.Length;
             uint hashi = hash ^ (uint)i;

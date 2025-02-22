@@ -12,8 +12,7 @@ public class OptOpenHashBenchmarks {
     
     [Benchmark] // 329.9us - 23.84KB
     public void ElasticHashTable() {
-        int capacity = N;
-        var table = new ElasticHashTable<string, string>(capacity);
+        var table = new ElasticHashTable<string, string>();
         int nInsert = table.Remaining;
         for (int i = 0; i < nInsert; i++) {
             table.Insert(keys[i], values[i]);

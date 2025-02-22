@@ -5,9 +5,12 @@ namespace OptOpenHash;
 public class FunnelHashTable<TKey, TValue> {
     private const double Delta = 0.1;
     private static readonly double Log2Delta = -Math.Log2(Delta);
+    private static readonly int Alpha = (int)Math.Ceiling(4 * Log2Delta) + 10; 
+    private static readonly int Beta = (int)Math.Ceiling(2 * Log2Delta);
+    private static readonly int BucketDiv = (int)(4 * (1 - Math.Pow(0.75, Alpha)));
     private readonly (TKey key, TValue value)?[][] levels;
     private readonly int[] buckets;
-    private readonly int maxInserts, beta, probeLimit;
+    private readonly int maxInserts, probeLimit;
     private int numInserts;
 
     public FunnelHashTable(int capacity) {
@@ -15,17 +18,15 @@ public class FunnelHashTable<TKey, TValue> {
         
         probeLimit = Math.Max(1, (int)Math.Ceiling(Math.Log(Math.Log(capacity + 1) + 1)));
         maxInserts = capacity - (int)(Delta * capacity);
-        var alpha = (int)Math.Ceiling(4 * Log2Delta) + 10;
-        beta = (int)Math.Ceiling(2 * Log2Delta);
         int specialSize = Math.Max(1, (int)Math.Floor(3 * Delta * capacity / 4));
-        int remainingBuckets = (capacity - specialSize) / beta;
-        double a1 = alpha > 0 ? remainingBuckets / (int)(4 * (1 - Math.Pow(0.75, alpha))) : remainingBuckets;
-        buckets = new int[alpha];
-        levels = new (TKey, TValue)?[alpha + 1][];
-        for (int i = 0; i < alpha && remainingBuckets > 0; i++, a1 *= 0.75) {
+        int remainingBuckets = (capacity - specialSize) / Beta;
+        double a1 = BucketDiv != 0 ? remainingBuckets / BucketDiv : remainingBuckets;
+        buckets = new int[Alpha];
+        levels = new (TKey, TValue)?[Alpha + 1][];
+        for (int i = 0; i < Alpha && remainingBuckets > 0; i++, a1 *= 0.75) {
             int aI = Math.Min(Math.Max(1, (int)a1), remainingBuckets);
-            int extra = i < alpha - 1 ? 0 : (remainingBuckets - aI) * beta;
-            levels[i] = new (TKey key, TValue value)?[aI * beta + extra];
+            int extra = i < Alpha - 1 ? 0 : (remainingBuckets - aI) * Beta;
+            levels[i] = new (TKey key, TValue value)?[aI * Beta + extra];
             remainingBuckets -= buckets[i] = aI + extra;
         }
         levels[^1] = new (TKey, TValue)?[specialSize];
@@ -38,7 +39,7 @@ public class FunnelHashTable<TKey, TValue> {
             if (buckets[i] > 0) {
                 var level = levels[i];
                 int bucketIndex = (int)((hash ^ (uint)i) % buckets[i]);
-                for (int idx = bucketIndex * beta, end = idx + beta; idx < end; idx++) {
+                for (int idx = bucketIndex * Beta, end = idx + Beta; idx < end; idx++) {
                     var entry = level[idx];
                     if (!entry.HasValue || entry.Value.key.Equals(key)) {
                         if (!entry.HasValue) numInserts++;
@@ -69,7 +70,7 @@ public class FunnelHashTable<TKey, TValue> {
             if (buckets[i] > 0) {
                 var level = levels[i];
                 int bucketIndex = (int)((hash ^ (uint)i) % buckets[i]);
-                int idx = bucketIndex * beta, end = idx + beta;
+                int idx = bucketIndex * Beta, end = idx + Beta;
                 for (; idx < end && (entry = level[idx]).HasValue; idx++) {
                     if (entry.Value.key.Equals(key)) return entry;
                 }
