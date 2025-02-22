@@ -1,5 +1,3 @@
-using System.Diagnostics.Contracts;
-
 namespace OptOpenHash;
 
 public class FunnelHashTable<TKey, TValue> {
@@ -14,18 +12,18 @@ public class FunnelHashTable<TKey, TValue> {
     private int numInserts;
 
     public FunnelHashTable(int capacity) {
-        Contract.Assert(capacity > 0, "Capacity must be positive");
+        if (capacity < 0) throw new ArgumentOutOfRangeException(nameof(capacity));
         
         probeLimit = Math.Max(1, (int)Math.Ceiling(Math.Log(Math.Log(capacity + 1) + 1)));
         maxInserts = capacity - (int)(Delta * capacity);
-        int specialSize = Math.Max(1, (int)Math.Floor(3 * Delta * capacity / 4));
+        int specialSize = Math.Max(1, (int)Math.Floor(3 * Delta * (capacity >> 2)));
         int remainingBuckets = (capacity - specialSize) / Beta;
         double a1 = BucketDiv != 0 ? remainingBuckets / BucketDiv : remainingBuckets;
         buckets = new int[Alpha];
         levels = new (TKey, TValue)?[Alpha + 1][];
         for (int i = 0; i < Alpha && remainingBuckets > 0; i++, a1 *= 0.75) {
             int aI = Math.Min(Math.Max(1, (int)a1), remainingBuckets);
-            int extra = i < Alpha - 1 ? 0 : (remainingBuckets - aI) * Beta;
+            int extra = i >= Alpha - 1 ? (remainingBuckets - aI) * Beta : 0;
             levels[i] = new (TKey key, TValue value)?[aI * Beta + extra];
             remainingBuckets -= buckets[i] = aI + extra;
         }
@@ -33,7 +31,7 @@ public class FunnelHashTable<TKey, TValue> {
     }
     
     public bool Add(TKey key, TValue value) {
-        Contract.Assert(numInserts < maxInserts, "Hash table is full");
+        if (numInserts >= maxInserts) throw new InvalidOperationException("Hash table is full");
         uint hash = (uint)key.GetHashCode();
         for (int i = 0; i < buckets.Length; i++) {
             if (buckets[i] > 0) {
@@ -59,34 +57,49 @@ public class FunnelHashTable<TKey, TValue> {
                 return true;
             }
         }
-        Contract.Assert(false, "Hash table is full");
-        return false;
+        throw new InvalidOperationException("Hash table is full");
     }
 
-    private (TKey key, TValue value)? FindEntry(TKey key) {
+    private (int i, int j)? FindEntry(TKey key) {
         uint hash = (uint)key.GetHashCode();
-        (TKey key, TValue value)? entry = null;
+        (TKey key, TValue value)? entry;
         for (int i = 0; i < buckets.Length; i++) {
             if (buckets[i] > 0) {
                 var level = levels[i];
                 int bucketIndex = (int)((hash ^ (uint)i) % buckets[i]);
                 int idx = bucketIndex * Beta, end = idx + Beta;
                 for (; idx < end && (entry = level[idx]).HasValue; idx++) {
-                    if (entry.Value.key.Equals(key)) return entry;
+                    if (entry.Value.key.Equals(key)) return (i, idx);
                 }
             }
         }
         var special = levels[^1];
         int size = special.Length, idx2 = (int)((hash ^ (uint)(levels.Length - 1)) % size);
         for (int j = 0; j < probeLimit && (entry = special[idx2]).HasValue; j++, idx2 = (idx2 + 1) % size) {
-            if (entry.Value.key.Equals(key)) return entry;
+            if (entry.Value.key.Equals(key)) return (levels.Length - 1, idx2);
         }
-        return entry;
+        return null;
+    }
+    
+    public bool AddOrUpdate(TKey key, TValue value) {
+        var e = FindEntry(key);
+        if (e.HasValue) {
+            ref var entry = ref levels[e.Value.i][e.Value.j];
+            if (entry.HasValue) {
+                entry = (key, value);
+                return false;
+            }
+        }
+        Add(key, value);
+        return true;
     }
 
     public TValue GetValueOrDefault(TKey key, TValue defaultValue = default) {
-        var entry = FindEntry(key);
-        return entry.HasValue ? entry.Value.value : defaultValue;
+        var e = FindEntry(key);
+        if (!e.HasValue) return defaultValue;
+        var entry = levels[e.Value.i][e.Value.j];
+        if (!entry.HasValue) return defaultValue;
+        return entry.Value.value;
     }
 
     public bool Contains(TKey key) => FindEntry(key).HasValue;

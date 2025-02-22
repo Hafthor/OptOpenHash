@@ -15,6 +15,10 @@ public class FunnelHashTableTests {
         for (int i = 0; i < nInsert; i++) {
             Assert.AreEqual($"value{i}", table.GetValueOrDefault($"key{i}"));
         }
+        
         Assert.IsNull(table.GetValueOrDefault("nonexistent"));
+        
+        Assert.AreEqual(false, table.AddOrUpdate("key99", "new value99"));
+        Assert.AreEqual("new value99", table.GetValueOrDefault("key99"));
     }
 }
