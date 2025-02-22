@@ -7,8 +7,7 @@ public class ElasticHashTableTests {
     [TestMethod]
     public void Test() {
         int capacity = 1000;
-        double delta = 0.1;
-        var table = new ElasticHashTable<string, string>(capacity, delta, new Random(0));
+        var table = new ElasticHashTable<string, string>(capacity);
         int nInsert = table.Remaining;
         for (int i = 0; i < nInsert; i++) {
             table.Insert($"key{i}", $"value{i}");

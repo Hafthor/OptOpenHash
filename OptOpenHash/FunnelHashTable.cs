@@ -3,37 +3,32 @@ using System.Diagnostics.Contracts;
 namespace OptOpenHash;
 
 public class FunnelHashTable<TKey, TValue> {
+    private const double Delta = 0.1;
+    private static readonly double Log2Delta = -Math.Log2(Delta);
     private readonly (TKey key, TValue value)?[][] levels;
     private readonly int[] buckets;
-    private readonly uint[] salts;
     private readonly int maxInserts, beta, probeLimit;
     private int numInserts;
 
-    public FunnelHashTable(int capacity, double delta = 0.1, Random random = null) {
+    public FunnelHashTable(int capacity) {
         Contract.Assert(capacity > 0, "Capacity must be positive");
-        Contract.Assert(delta is > 0 and < 1, "Delta must be between 0 and 1");
-        random ??= new Random();
-
+        
         probeLimit = Math.Max(1, (int)Math.Ceiling(Math.Log(Math.Log(capacity + 1) + 1)));
-        maxInserts = capacity - (int)(delta * capacity);
-        double log2Delta = -Math.Log2(delta);
-        var alpha = (int)Math.Ceiling(4 * log2Delta) + 10;
-        beta = (int)Math.Ceiling(2 * log2Delta);
-        int specialSize = Math.Max(1, (int)Math.Floor(3 * delta * capacity / 4));
+        maxInserts = capacity - (int)(Delta * capacity);
+        var alpha = (int)Math.Ceiling(4 * Log2Delta) + 10;
+        beta = (int)Math.Ceiling(2 * Log2Delta);
+        int specialSize = Math.Max(1, (int)Math.Floor(3 * Delta * capacity / 4));
         int remainingBuckets = (capacity - specialSize) / beta;
         double a1 = alpha > 0 ? remainingBuckets / (int)(4 * (1 - Math.Pow(0.75, alpha))) : remainingBuckets;
         buckets = new int[alpha];
         levels = new (TKey, TValue)?[alpha + 1][];
-        salts = new uint[alpha + 1];
         for (int i = 0; i < alpha && remainingBuckets > 0; i++, a1 *= 0.75) {
             int aI = Math.Min(Math.Max(1, (int)a1), remainingBuckets);
             int extra = i < alpha - 1 ? 0 : (remainingBuckets - aI) * beta;
             levels[i] = new (TKey key, TValue value)?[aI * beta + extra];
             remainingBuckets -= buckets[i] = aI + extra;
-            salts[i] = (uint)random.Next(int.MinValue, int.MaxValue);
         }
         levels[^1] = new (TKey, TValue)?[specialSize];
-        salts[^1] = (uint)random.Next(int.MinValue, int.MaxValue);
     }
     
     public bool Insert(TKey key, TValue value) {
@@ -42,7 +37,7 @@ public class FunnelHashTable<TKey, TValue> {
         for (int i = 0; i < buckets.Length; i++) {
             if (buckets[i] > 0) {
                 var level = levels[i];
-                int bucketIndex = (int)((hash ^ salts[i]) % buckets[i]);
+                int bucketIndex = (int)((hash ^ (uint)i) % buckets[i]);
                 for (int idx = bucketIndex * beta, end = idx + beta; idx < end; idx++) {
                     var entry = level[idx];
                     if (!entry.HasValue || entry.Value.key.Equals(key)) {
@@ -54,7 +49,7 @@ public class FunnelHashTable<TKey, TValue> {
             }
         }
         var special = levels[^1];
-        int size = special.Length, specialIdx = (int)((hash ^ salts[^1]) % size);
+        int size = special.Length, specialIdx = (int)((hash ^ (uint)(levels.Length - 1)) % size);
         for (int j = 0, idx = specialIdx; j < probeLimit; j++, idx = (idx + 1) % size) {
             var entry = special[idx];
             if (!entry.HasValue || entry.Value.key.Equals(key)) {
@@ -73,7 +68,7 @@ public class FunnelHashTable<TKey, TValue> {
         for (int i = 0; i < buckets.Length; i++) {
             if (buckets[i] > 0) {
                 var level = levels[i];
-                int bucketIndex = (int)((hash ^ salts[i]) % buckets[i]);
+                int bucketIndex = (int)((hash ^ (uint)i) % buckets[i]);
                 int idx = bucketIndex * beta, end = idx + beta;
                 for (; idx < end && (entry = level[idx]).HasValue; idx++) {
                     if (entry.Value.key.Equals(key)) return entry;
@@ -81,7 +76,7 @@ public class FunnelHashTable<TKey, TValue> {
             }
         }
         var special = levels[^1];
-        int size = special.Length, idx2 = (int)((hash ^ salts[^1]) % size);
+        int size = special.Length, idx2 = (int)((hash ^ (uint)(levels.Length - 1)) % size);
         for (int j = 0; j < probeLimit && (entry = special[idx2]).HasValue; j++, idx2 = (idx2 + 1) % size) {
             if (entry.Value.key.Equals(key)) return entry;
         }

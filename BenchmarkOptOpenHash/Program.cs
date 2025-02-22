@@ -10,11 +10,10 @@ public class OptOpenHashBenchmarks {
     private static readonly string[] keys = Enumerable.Range(0, N).Select(i=> $"key{i}").ToArray();
     private static readonly string[] values = Enumerable.Range(0, N).Select(i=> $"value{i}").ToArray();
     
-    [Benchmark] // 330.1us - 24.23KB
+    [Benchmark] // 329.9us - 23.84KB
     public void ElasticHashTable() {
         int capacity = N;
-        double delta = 0.1;
-        var table = new ElasticHashTable<string, string>(capacity, delta, new Random(0));
+        var table = new ElasticHashTable<string, string>(capacity);
         int nInsert = table.Remaining;
         for (int i = 0; i < nInsert; i++) {
             table.Insert(keys[i], values[i]);
@@ -25,11 +24,10 @@ public class OptOpenHashBenchmarks {
         _ = table.Search("nonexistent");
     }
     
-    [Benchmark] // 109.7us - 24.37KB
+    [Benchmark] // 107.7us - 23.94KB
     public void FunnelHashTable() {
         int capacity = N;
-        double delta = 0.1;
-        var table = new FunnelHashTable<string, string>(capacity, delta, new Random(0));
+        var table = new FunnelHashTable<string, string>(capacity);
         int nInsert = table.Remaining;
         for (int i = 0; i < nInsert; i++) {
             table.Insert(keys[i], values[i]);
