@@ -4,7 +4,8 @@ namespace OptOpenHash;
 
 public class FunnelHashTable<TKey, TValue> {
     private readonly (TKey key, TValue value)?[][] levels;
-    private readonly int[] buckets, salts;
+    private readonly int[] buckets;
+    private readonly uint[] salts;
     private readonly int maxInserts, beta, probeLimit;
     private int numInserts;
 
@@ -23,25 +24,25 @@ public class FunnelHashTable<TKey, TValue> {
         double a1 = alpha > 0 ? remainingBuckets / (int)(4 * (1 - Math.Pow(0.75, alpha))) : remainingBuckets;
         buckets = new int[alpha];
         levels = new (TKey, TValue)?[alpha + 1][];
-        salts = new int[alpha + 1];
+        salts = new uint[alpha + 1];
         for (int i = 0; i < alpha && remainingBuckets > 0; i++, a1 *= 0.75) {
             int aI = Math.Min(Math.Max(1, (int)a1), remainingBuckets);
             int extra = i < alpha - 1 ? 0 : (remainingBuckets - aI) * beta;
             levels[i] = new (TKey key, TValue value)?[aI * beta + extra];
             remainingBuckets -= buckets[i] = aI + extra;
-            salts[i] = random.Next();
+            salts[i] = (uint)random.Next(int.MinValue, int.MaxValue);
         }
         levels[^1] = new (TKey, TValue)?[specialSize];
-        salts[^1] = random.Next();
+        salts[^1] = (uint)random.Next(int.MinValue, int.MaxValue);
     }
-
+    
     public bool Insert(TKey key, TValue value) {
         Contract.Assert(numInserts < maxInserts, "Hash table is full");
-        int hash = key.GetHashCode() & 0x7FFFFFFF;
+        uint hash = (uint)key.GetHashCode();
         for (int i = 0; i < buckets.Length; i++) {
             if (buckets[i] > 0) {
                 var level = levels[i];
-                int bucketIndex = (hash ^ salts[i]) % buckets[i];
+                int bucketIndex = (int)((hash ^ salts[i]) % buckets[i]);
                 for (int idx = bucketIndex * beta, end = idx + beta; idx < end; idx++) {
                     var entry = level[idx];
                     if (!entry.HasValue || entry.Value.key.Equals(key)) {
@@ -53,7 +54,7 @@ public class FunnelHashTable<TKey, TValue> {
             }
         }
         var special = levels[^1];
-        int size = special.Length, specialIdx = (hash ^ salts[^1]) % size;
+        int size = special.Length, specialIdx = (int)((hash ^ salts[^1]) % size);
         for (int j = 0, idx = specialIdx; j < probeLimit; j++, idx = (idx + 1) % size) {
             var entry = special[idx];
             if (!entry.HasValue || entry.Value.key.Equals(key)) {
@@ -67,12 +68,12 @@ public class FunnelHashTable<TKey, TValue> {
     }
 
     private (TKey key, TValue value)? FindEntry(TKey key) {
-        int hash = key.GetHashCode() & 0x7FFFFFFF;
+        uint hash = (uint)key.GetHashCode();
         (TKey key, TValue value)? entry = null;
         for (int i = 0; i < buckets.Length; i++) {
             if (buckets[i] > 0) {
                 var level = levels[i];
-                int bucketIndex = (hash ^ salts[i]) % buckets[i];
+                int bucketIndex = (int)((hash ^ salts[i]) % buckets[i]);
                 int idx = bucketIndex * beta, end = idx + beta;
                 for (; idx < end && (entry = level[idx]).HasValue; idx++) {
                     if (entry.Value.key.Equals(key)) return entry;
@@ -80,7 +81,7 @@ public class FunnelHashTable<TKey, TValue> {
             }
         }
         var special = levels[^1];
-        int size = special.Length, idx2 = (hash ^ salts[^1]) % size;
+        int size = special.Length, idx2 = (int)((hash ^ salts[^1]) % size);
         for (int j = 0; j < probeLimit && (entry = special[idx2]).HasValue; j++, idx2 = (idx2 + 1) % size) {
             if (entry.Value.key.Equals(key)) return entry;
         }
