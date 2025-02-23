@@ -8,8 +8,9 @@ public class ElasticHashTable<TKey, TValue> {
     private readonly List<(TKey key, TValue value)?[]> levels = new();
     private readonly List<int> occupancies = new();
 
-    public ElasticHashTable() {
-        for (int i = 0, size = 1; i < 10; i++, size <<= 1) {
+    public ElasticHashTable(int desiredCapacity = 1024) {
+        int capacity = 0;
+        for (int size = 1; capacity < desiredCapacity; capacity += size - (int)(size * Delta), size <<= 1) {
             levels.Add(new (TKey, TValue)?[size]);
             occupancies.Add(0);
         }
