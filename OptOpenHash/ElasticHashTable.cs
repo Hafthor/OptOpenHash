@@ -26,12 +26,9 @@ public class ElasticHashTable<TKey, TValue> {
                 var nextLevel = levels[i + 1];
                 int nextFree = nextLevel.Length - occupancies[i + 1];
                 double nextLoad = nextLevel.Length > 0 ? (double)nextFree / nextLevel.Length : 0;
-                if (nextLoad > Threshold) {
-                    int probeLimit = Math.Max(1, (int)(C * Math.Min(Math.Log2(load > 0 ? 1 / load : 0), Log2Delta)));
-                    if (InsertAt(probeLimit, i, level)) return true;
-                } else {
-                    if (InsertAt(level.Length, i, nextLevel)) return true;
-                }
+                int probeLimit = nextLoad <= Threshold ? level.Length :
+                    Math.Max(1, (int)(C * Math.Min(Math.Log2(load > 0 ? 1 / load : 0), Log2Delta)));
+                if (InsertAt(probeLimit, i, level)) return true;
             }
         }
         if (InsertAt(levels[^1].Length, levels.Count - 1, levels[^1])) return true;
@@ -82,9 +79,8 @@ public class ElasticHashTable<TKey, TValue> {
         uint hash = (uint)key.GetHashCode();
         for (int i = 0; i < levels.Count; i++) {
             var level = levels[i];
-            int size = level.Length;
             uint hashi = hash ^ (uint)i;
-            for (int j = 0; j < size; hashi += (uint)(j + ++j)) {
+            for (int j = 0, size = level.Length; j < size; hashi += (uint)(j + ++j)) {
                 int k = (int)(hashi % size);
                 var entry = level[k];
                 if (!entry.HasValue) break;
