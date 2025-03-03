@@ -3,13 +3,13 @@ using OptOpenHash;
 namespace TestOptOpenHash;
 
 [TestClass]
-public class KrapivinHashTableTests {
+public class KrapivinDictionaryTests {
     [TestMethod]
     public void Test() {
-        var table = new KrapivinHashTable<string, string>();
+        var table = new KrapivinDictionary<string, string>();
         int nInsert = 2000;
         for (int i = 0; i < nInsert; i++) {
-            Assert.IsTrue(table.Add($"key{i}", $"value{i}"));
+            table.Add($"key{i}", $"value{i}");
         }
         for (int i = 0; i < nInsert; i++) {
             string? value = table.GetValueOrDefault($"key{i}");
@@ -23,7 +23,7 @@ public class KrapivinHashTableTests {
         Assert.AreEqual("new value99", table.GetValueOrDefault("key99"));
 
         for (int i = 0; i < nInsert; i += 3) {
-            // TODO: Currently fails at removing key360
+            // TODO: Currently fails randomly
             Assert.IsTrue(table.Remove($"key{i}"), $"Failed removing key{i}");
         }
 
