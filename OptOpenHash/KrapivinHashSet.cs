@@ -3,17 +3,15 @@ using System.Collections;
 namespace OptOpenHash;
 
 public class KrapivinHashSet<TKey> : ISet<TKey> {
-    private readonly IEqualityComparer<TKey> comparer;
-    private TKey?[] table;
+    private readonly Func<TKey, TKey, bool> comparer;
+    private BitArray used;
+    private TKey[] table;
     private int count;
 
     public KrapivinHashSet(int capacity = 1024, IEqualityComparer<TKey> comparer = null) {
-        this.comparer = comparer;
-        table = new TKey?[capacity];
-    }
-    
-    private bool Compare(TKey key1, TKey key2) {
-        return comparer == null ? key1.Equals(key2) : comparer.Equals(key1, key2);
+        this.comparer = comparer == null ? (x, y) => x.Equals(y) : comparer.Equals;
+        table = new TKey[capacity];
+        used = new BitArray(capacity);
     }
 
     private int CalcIndex(uint hash, int index) {
@@ -22,8 +20,8 @@ public class KrapivinHashSet<TKey> : ISet<TKey> {
     }
     
     public IEnumerator<TKey> GetEnumerator() {
-        foreach (var item in table) {
-            if (item != null) yield return item;
+        for (int i = 0; i < table.Length; i++) {
+            if (used[i]) yield return table[i];
         }
     }
 
@@ -61,14 +59,15 @@ public class KrapivinHashSet<TKey> : ISet<TKey> {
     public bool Overlaps(IEnumerable<TKey> other) => other.Any(Contains);
 
     public bool SetEquals(IEnumerable<TKey> other) {
-        BitArray array = new BitArray(table.Length);
+        BitArray array = new(table.Length);
         foreach (var item in other) {
             int index = FindEntry(item);
             if (index < 0) return false;
             array[index] = true;
         }
-        foreach (var item in table) {
-            if (item != null && !array[FindEntry(item)]) return false;
+        for (var i = 0; i < table.Length; i++) {
+            var item = table[i];
+            if (used[i] && !array[FindEntry(item)]) return false;
         }
         return true;
     }
@@ -83,30 +82,29 @@ public class KrapivinHashSet<TKey> : ISet<TKey> {
 
     bool ISet<TKey>.Add(TKey item) => Add(item);
     
-    private bool Add(TKey item) {
+    public bool Add(TKey item) {
         int index = FindSlot(item);
         if (index == -1) throw new NotSupportedException("Table is full"); // Table is full
-        bool isNew = table[index] != null;
+        bool isNew = !used[index];
         if (!isNew) return false;
         if (CheckResize()) index = FindSlot(item); // at 75% full, double size
         table[index] = item;
+        used[index] = true;
         count++;
         return true;
     }
 
     public void Clear() {
         Array.Clear(table, 0, table.Length);
+        used.SetAll(false);
         count = 0;
     }
 
-    public bool Contains(TKey item) {
-        int index = FindEntry(item);
-        return index < 0 || table[index] != null;
-    }
+    public bool Contains(TKey item) => FindEntry(item) >= 0;
 
     public void CopyTo(TKey[] array, int arrayIndex) {
-        foreach (var item in table) {
-            if (item != null) array[arrayIndex++] = item;
+        for (var i = 0; i < table.Length; i++) {
+            if (used[i]) array[arrayIndex++] = table[i];
         }
     }
 
@@ -114,9 +112,9 @@ public class KrapivinHashSet<TKey> : ISet<TKey> {
         uint hash = (uint)item.GetHashCode();
         for (int i = 0; i < table.Length; i++) {
             int index = CalcIndex(hash, i);
-            if (table[index] == null) return false;
-            if (Compare(table[index], item)) {
-                table[index] = default;
+            if (!used[index]) return false;
+            if (comparer(table[index], item)) {
+                used[index] = false;
                 count--;
                 RekeyAfterHole(hash, i);
                 return true;
@@ -129,9 +127,9 @@ public class KrapivinHashSet<TKey> : ISet<TKey> {
         List<TKey> entries = new();
         for (int j = i + 1; j < table.Length; j++) {
             int index = CalcIndex(hash, j);
-            if (table[index] == null) break;
+            if (!used[index]) break;
             entries.Add(table[index]);
-            table[index] = default;
+            used[index] = false;
         }
         count -= entries.Count;
         foreach (var entry in entries) {
@@ -147,7 +145,8 @@ public class KrapivinHashSet<TKey> : ISet<TKey> {
         uint hash = (uint)key.GetHashCode();
         for (int i = 0; i < table.Length; i++) {
             int index = CalcIndex(hash, i);
-            if (table[index] != null && Compare(table[index], key)) return index;
+            if (used[index] && comparer(table[index], key)) return index;
+            if (!used[index]) break;
         }
         return -1;
     }
@@ -156,19 +155,22 @@ public class KrapivinHashSet<TKey> : ISet<TKey> {
         uint hash = (uint)key.GetHashCode();
         for (int i = 0; i < table.Length; i++) {
             int index = CalcIndex(hash, i);
-            if (table[index] != null || Compare(table[index], key)) return index;
+            if (!used[index] || comparer(table[index], key)) return index;
         }
         return -1; // Table is full
     }
     
     private bool CheckResize() {
-        if (count < table.Length * 3 / 4) return false;
+        // at 75% full, double size
+        if (count < (table.Length * 3) >> 2) return false; // not full enough
         var oldTable = table;
-        table = new TKey?[oldTable.Length << 1];
+        var oldUsed = used;
+        table = new TKey[oldTable.Length << 1];
+        used = new BitArray(table.Length);
         count = 0;
-        foreach (var entry in oldTable) {
-            if (entry != null) {
-                Add(entry);
+        for (var i = 0; i < oldTable.Length; i++) {
+            if (oldUsed[i]) {
+                Add(oldTable[i]);
             }
         }
         return true;

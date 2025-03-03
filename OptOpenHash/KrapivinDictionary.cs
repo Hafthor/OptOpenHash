@@ -105,6 +105,7 @@ public class KrapivinDictionary<TKey, TValue> : IDictionary<TKey, TValue> {
         for (int i = 0; i < table.Length; i++) {
             int index = CalcIndex(hash, i);
             if (table[index].HasValue && Compare(table[index].Value.key, key)) return index;
+            if (!table[index].HasValue) break;
         }
         return -1;
     }
