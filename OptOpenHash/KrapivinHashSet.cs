@@ -109,7 +109,7 @@ public class KrapivinHashSet<TKey> : ISet<TKey> {
     }
 
     public bool Remove(TKey item) {
-        uint hash = (uint)item.GetHashCode();
+        uint hash = (uint)(item?.GetHashCode() ?? 0);
         for (int i = 0; i < table.Length; i++) {
             int index = CalcIndex(hash, i);
             if (!used[index]) return false;
@@ -142,7 +142,7 @@ public class KrapivinHashSet<TKey> : ISet<TKey> {
     public bool IsReadOnly => false;
     
     private int FindEntry(TKey key) {
-        uint hash = (uint)key.GetHashCode();
+        uint hash = (uint)(key?.GetHashCode() ?? 0);
         for (int i = 0; i < table.Length; i++) {
             int index = CalcIndex(hash, i);
             if (used[index] && comparer(table[index], key)) return index;
@@ -152,7 +152,7 @@ public class KrapivinHashSet<TKey> : ISet<TKey> {
     }
     
     private int FindSlot(TKey key) {
-        uint hash = (uint)key.GetHashCode();
+        uint hash = (uint)(key?.GetHashCode() ?? 0);
         for (int i = 0; i < table.Length; i++) {
             int index = CalcIndex(hash, i);
             if (!used[index] || comparer(table[index], key)) return index;
