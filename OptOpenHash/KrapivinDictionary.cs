@@ -74,7 +74,7 @@ public class KrapivinDictionary<TKey, TValue> : IDictionary<TKey, TValue> {
     }
     
     private bool CheckResize() {
-        if (count < table.Length * 3 / 4) return false;
+        if (count < (table.Length * 3) >> 2) return false;
         var oldTable = table;
         table = new (TKey, TValue)?[oldTable.Length << 1];
         count = 0;
