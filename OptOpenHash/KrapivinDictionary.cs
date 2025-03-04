@@ -112,14 +112,18 @@ public class KrapivinDictionary<TKey, TValue> : IDictionary<TKey, TValue> {
 
     public bool Remove(TKey key) {
         uint hash = (uint)key.GetHashCode();
+        List<(TKey key, TValue value)> entries = new();
         for (int i = 0; i < table.Length; i++) {
             int index = CalcIndex(hash, i);
-            if (!table[index].HasValue) return false;
-            if (Compare(table[index].Value.key, key)) {
+            if (!table[index].HasValue) {
+                foreach (var entry in entries.Skip(1)) {
+                    Add(entry.key, entry.value);
+                }
+                return entries.Count > 0;
+            } else if (entries.Count > 0 || Compare(table[index].Value.key, key)) {
+                entries.Add(table[index].Value);
                 table[index] = null;
                 count--;
-                RekeyAfterHole(hash, i);
-                return true;
             }
         }
         return false;
@@ -151,20 +155,6 @@ public class KrapivinDictionary<TKey, TValue> : IDictionary<TKey, TValue> {
     public ICollection<TKey> Keys => table.Where(e => e.HasValue).Select(e => e.Value.key).ToList();
 
     public ICollection<TValue> Values => table.Where(e => e.HasValue).Select(e => e.Value.value).ToList();
-
-    private void RekeyAfterHole(uint hash, int i) {
-        List<(TKey key, TValue value)> entries = new();
-        for (int j = i + 1; j < table.Length; j++) {
-            int index = CalcIndex(hash, j);
-            if (!table[index].HasValue) break;
-            entries.Add(table[index].Value);
-            table[index] = null;
-        }
-        count -= entries.Count;
-        foreach (var entry in entries) {
-            AddOrUpdate(entry.key, entry.value);
-        }
-    }
 
     public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() {
         foreach(var entry in table) {

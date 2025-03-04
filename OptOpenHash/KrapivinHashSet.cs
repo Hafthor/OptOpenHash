@@ -110,31 +110,21 @@ public class KrapivinHashSet<TKey> : ISet<TKey> {
 
     public bool Remove(TKey item) {
         uint hash = (uint)(item?.GetHashCode() ?? 0);
+        List<TKey> entries = new();
         for (int i = 0; i < table.Length; i++) {
             int index = CalcIndex(hash, i);
-            if (!used[index]) return false;
-            if (comparer(table[index], item)) {
+            if (!used[index]) {
+                foreach (var entry in entries.Skip(1)) {
+                    Add(entry);
+                }
+                return entries.Count > 0;
+            } else if (entries.Count > 0 || comparer(table[index], item)) {
+                entries.Add(table[index]);
                 used[index] = false;
                 count--;
-                RekeyAfterHole(hash, i);
-                return true;
             }
         }
         return false;
-    }
-    
-    private void RekeyAfterHole(uint hash, int i) {
-        List<TKey> entries = new();
-        for (int j = i + 1; j < table.Length; j++) {
-            int index = CalcIndex(hash, j);
-            if (!used[index]) break;
-            entries.Add(table[index]);
-            used[index] = false;
-        }
-        count -= entries.Count;
-        foreach (var entry in entries) {
-            Add(entry);
-        }
     }
 
     public int Count => count;
